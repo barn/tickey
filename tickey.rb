@@ -8,7 +8,7 @@ require 'pp'
 require 'redmine_client'
 
 api_token       = ''
-redmine_url     = 'https://projects-dev.puppetlabs.lan/'
+redmine_url     = 'http://projects-dev.puppetlabs.lan/'
 redmine_project = 'puppetlabs-infras'
 
 body = ''
@@ -42,7 +42,8 @@ def read_body
   prompt = 'Body: '
   while line = Readline.readline( prompt )
     break if line.downcase == 'exit' or 
-                line.downcase == 'quit'
+                line.downcase == 'quit' or
+                line.downcase == '.'
 
     body << line
     prompt = '`---> '
@@ -95,13 +96,27 @@ if body.empty?
   body = read_body
 end
 
-# puts project.id
-# puts "Subject: #{subject}"
-# puts "Body: #{body}"
+if opts[:debug]
+  puts project.id
+  puts "Subject: #{subject}"
+  puts "Body: #{body}"
+end
 
 # now post the issue!
-issue = Puppet::Util::RedmineClient::Issue.new(
+issue = RedmineClient::Issue.new(
   :subject => subject,
   :project_id => project.id,
   :description => body
 )
+
+# Try and save it.
+begin
+  issue.save
+rescue => e
+  puts "Failed to save ticket because of #{e}"
+  exit 10
+end
+
+puts "#{redmine_url}/issues/#{issue.id}"
+
+pp issue
