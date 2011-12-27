@@ -7,9 +7,9 @@ require 'trollop'
 require 'pp'
 require 'redmine_client'
 
-api_token       = ''
-redmine_url     = 'http://projects-dev.puppetlabs.lan/'
-redmine_project = 'puppetlabs-infras'
+api_token       = 'XxXxXxXxXxXxXxXxXx etc'
+redmine_url     = 'https://projects.puppetlabs.com/'
+redmine_project = 'puppet'
 
 body = ''
 
