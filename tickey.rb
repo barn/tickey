@@ -6,10 +6,22 @@ require 'readline'    # http://bogojoker.com/readline/
 require 'trollop'
 require 'pp'
 require 'redmine_client'
+require 'yaml'
 
-api_token       = 'XxXxXxXxXxXxXxXxXx etc'
-redmine_url     = 'https://projects.puppetlabs.com/'
-redmine_project = 'puppet'
+configfile = "#{ENV['HOME']}/.tickey.conf"
+
+config = ''
+
+if File.exists?(configfile)
+  config = YAML::load(File.open(configfile))
+else
+  puts "no config file at #{configfile}"
+  exit 1
+end
+
+api_token       = config["api_token"]
+redmine_url     = config["redmine_url"]
+redmine_project = config["redmine_project"]
 
 body = ''
 
