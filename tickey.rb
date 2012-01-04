@@ -129,6 +129,6 @@ rescue => e
   exit 10
 end
 
-puts "#{redmine_url}/issues/#{issue.id}"
+puts "#{redmine_url}/issues/#{issue.id} created at #{issue.created_on}"
 
-pp issue
+# pp issue
