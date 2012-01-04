@@ -129,6 +129,9 @@ rescue => e
   exit 10
 end
 
-puts "#{redmine_url}/issues/#{issue.id} created at #{issue.created_on}"
+# Strip multiple //s but not the one in http://
+issue_url = "#{redmine_url}/issues/#{issue.id}".sub( /[^:]\/+/ , '/' )
+
+puts "#{issue_url} created at #{issue.created_on}"
 
 # pp issue
