@@ -8,6 +8,7 @@ require 'pp'
 require 'redmine_client'
 require 'yaml'
 require 'tempfile'
+require 'benchmark'
 
 configfile = "#{ENV['HOME']}/.tickey.conf"
 
@@ -20,10 +21,11 @@ else
   exit 1
 end
 
-api_token       = config['api_token']
-redmine_url     = config['redmine_url']
-redmine_project = config['redmine_project']
+api_token        = config['api_token']
+redmine_url      = config['redmine_url']
+redmine_project  = config['redmine_project']
 redmine_projects = config['redmine_projects']
+cache_file       = config['cache_file']
 
 body = ''
 
@@ -45,11 +47,18 @@ end
 
 
 def get_project( redmine_project )
-  proj = RedmineClient::Project.find( redmine_project )
+  proj = nil
+
+  time = Benchmark.realtime do
+    proj = RedmineClient::Project.find( redmine_project )
+  end
+
   unless proj
     puts "Unable to find the project of #{redmine_project}"
     exit 10
   end
+
+  puts "Time to find that project was #{time * 1000} milliseconds by the way."
   return proj
 end
 
