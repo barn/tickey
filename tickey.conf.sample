@@ -2,3 +2,7 @@
 redmine_url: "https://projects.example.com/"
 redmine_project: myfirstproject
 api_token: sup3rs3cr3t4p1k3y
+redmine_projects:
+- myfirstproject
+- otherproject
+- whatproject
