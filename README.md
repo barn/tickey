@@ -13,6 +13,7 @@ Usage
 
     Options:
       --subject, -s <s>:   Subject line for ticket
+           --editor, -e:   Fire up vim
             --debug, -d:   Be noisey
          --apitoken, -a:   API token to use for redmine
               --url, -u:   URL to Redmine/Chili
