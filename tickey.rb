@@ -7,6 +7,7 @@ require 'trollop'
 require 'pp'
 require 'redmine_client'
 require 'yaml'
+require 'tempfile'
 
 configfile = "#{ENV['HOME']}/.tickey.conf"
 
@@ -19,11 +20,29 @@ else
   exit 1
 end
 
-api_token       = config["api_token"]
-redmine_url     = config["redmine_url"]
-redmine_project = config["redmine_project"]
+api_token       = config['api_token']
+redmine_url     = config['redmine_url']
+redmine_project = config['redmine_project']
+redmine_projects = config['redmine_projects']
 
 body = ''
+
+# Monkey patching!
+# https://github.com/anibalcucco/basecamp-wrapper/issues/11
+class Hash
+  def collect!(&block)
+    ret = []
+    self.each {|key,val|
+      if val.kind_of? Array
+        val.collect!{|subval| block.call subval }
+        ret = val
+      end
+    }
+    return ret
+  end
+end
+
+
 
 def get_project( redmine_project )
   proj = RedmineClient::Project.find( redmine_project )
@@ -36,8 +55,9 @@ end
 
 def redmine_login( redmine_url , api_token )
   RedmineClient::Base.configure do
-    self.site = redmine_url
-    self.user = api_token
+    self.site   = redmine_url
+    self.user   = api_token
+    # self.format = :json
   end
 end
 
@@ -49,11 +69,13 @@ def get_project_list
   end
 end
 
+
+
 def read_body
   body = []
   prompt = 'Body: '
   while line = Readline.readline( prompt )
-    break if line.downcase == 'exit' or 
+    break if line.downcase == 'exit' or
                 line.downcase == 'quit' or
                 line.downcase == '.'
 
@@ -71,6 +93,7 @@ end
 # See http://trollop.rubyforge.org/
 opts = Trollop::options do
   opt :subject, "Subject line for ticket", :short => 's', :type => :string
+  opt :editor, "Fire up vim", :short => 'e'
   opt :debug, "Be noisey"
   opt :apitoken, "API token to use for redmine", :short => 'a'
   opt :url, "URL to Redmine/Chili", :short => 'u'
@@ -92,7 +115,7 @@ end
 api_token = opts[:apitoken] if opts[:apitoken]
 redmine_login( redmine_url, api_token )
 
-project = get_project( redmine_project )
+project = nil
 
 # before we do readline, deal cleanly with Ctrl-C action
 if body.empty? or opts[:subject].empty? 
@@ -100,16 +123,63 @@ if body.empty? or opts[:subject].empty?
   trap('INT') { system('stty', stty_save); exit }
 end
 
+# Readline completition from http://bogojoker.com/readline/
+list = [ 'puppet', 'puppetlabs', 'puppetlabs-modules',
+  '@james', '@zleslie', '@adrient', '@zach'
+].sort
+
+# Add in all the projects as #project for tab completion
+list << redmine_projects.collect { |x| '#' + x }
+list.flatten!
+
+
+comp = proc { |s| list.grep( /^#{Regexp.escape(s)}/ ) }
+
+Readline.completion_append_character = " "
+Readline.completion_proc = comp
+
 # If we've got a subject, use it.
 subject = opts[:subject]
 subject ||= Readline.readline( 'Subject: ' , true )
 
-if body.empty?
-  body = read_body
+# Now we need to do something clever with the subject, to parse it for
+# things.
+redmine_projects.each do |proj|
+  if subject.split( /\b/ ).include? proj
+    begin
+      project = get_project( proj )
+    rescue => e
+      puts "#{e} happened. bad."
+      exit
+    end
+    break
+  end
 end
 
+# Default to redmine_project.
+if project.nil?
+  project = get_project( redmine_project )
+end
+
+
+if body.empty?
+  if opts[:editor]
+    # vi tempfile...
+    temp = Tempfile.new( 'tickeypoos', '/tmp/' )
+    temp.close
+    system( "${EDITOR:vi} #{temp.path}" )
+    File.open( temp.path , 'r' ) do |f|
+      body = f.readlines.join
+    end
+    temp.unlink
+  else
+    body = read_body
+  end
+end
+
+
 if opts[:debug]
-  puts project.id
+  puts "Project of #{project} with id of #{project.id}"
   puts "Subject: #{subject}"
   puts "Body: #{body}"
 end
@@ -130,8 +200,12 @@ rescue => e
 end
 
 # Strip multiple //s but not the one in http://
-issue_url = "#{redmine_url}/issues/#{issue.id}".sub( /[^:]\/+/ , '/' )
+issue_url = "#{redmine_url}/issues/#{issue.id}".gsub( /\/+/ , '/' ).sub( /^(https?:)\/\b/ , '\1//' )
 
 puts "#{issue_url} created at #{issue.created_on}"
+
+if RUBY_PLATFORM =~ /darwin/
+  system( "echo '#{issue_url}' | pbcopy" )
+end
 
 # pp issue
