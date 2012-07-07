@@ -58,7 +58,7 @@ def get_project( redmine_project )
     exit 10
   end
 
-  puts "Time to find that project was #{time * 1000} milliseconds by the way."
+  puts "Time to find that project '#{redmine_project}' was #{ '%.2f' % time } seconds by the way."
   return proj
 end
 
@@ -152,11 +152,18 @@ subject = opts[:subject]
 subject ||= Readline.readline( 'Subject: ' , true )
 
 # Now we need to do something clever with the subject, to parse it for
-# things.
+# things. Only picks the first one it finds, which is kinda lame, but oh
+# well.
 redmine_projects.each do |proj|
-  if subject.split( /\b/ ).include? proj
+  if subject =~ /\# #{proj} \b /ix
     begin
       project = get_project( proj )
+      subject = $` + $' # so obvious, this is:
+      # $` contains the string before the actual matched
+      # string of the previous successful pattern match.
+      # and then
+      # $' contains the string after the actual matched string of the
+      # previous successful pattern match.
     rescue => e
       puts "#{e} happened. bad."
       exit
